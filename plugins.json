@@ -493,5 +493,60 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    {
+        "name": "小真寻银行",
+        "module": "mahiro_bank",
+        "module_path": "plugins.mahiro_bank",
+        "description": "小真寻银行，提供高品质的存款！当好感度等级达到指初识时，小真寻会偷偷的帮助你哦。\n    存款额度与好感度有关，每日存款次数有限制。\n    基础存款提供基础利息\n    每日存款提供高额利息",
+        "usage": "指令：\n        存款 [金额]\n        取款 [金额]\n        银行信息\n        我的银行信息",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    {
+        "name": "查看信息",
+        "module": "info",
+        "module_path": "plugins.info",
+        "description": "查看个人信息",
+        "usage": "查看个人/群组信息\n    指令：\n        我的信息 ?[at]",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    {
+        "name": "广播",
+        "module": "broadcast",
+        "module_path": "plugins.broadcast",
+        "description": "昭告天下！",
+        "usage": "向所有群组或指定标签的群组发送广播消息。\n\n**基础用法**\n- `广播 [消息内容]`：向所有群组发送广播。\n- `广播` (并引用一条消息)：将引用的消息作为内容进行广播。\n\n**高级定向广播**\n- `广播 -t <标签名> [消息内容]`：向指定标签下的所有群组广播。\n- `广播到 <标签名> [消息内容]`：与 `-t` 等效的快捷方式。\n\n**标签可以是静态的，也可以是动态的，例如：**\n- `广播到 核心群 通知：...`\n- `广播到 成员数>500的群 通知：...`\n\n**其他命令**\n- `广播撤回` (别名: `recall`)：撤回最近一次发送的广播。\n\n特性：\n- 在群组中使用广播时，不会将消息发送到当前群组\n- 在私聊中使用广播时，会发送到所有群组\n\n别名：\n- bc (广播的简写)\n- recall (广播撤回的别名)",
+        "author": "HibiKier",
+        "version": "1.3",
+        "plugin_type": "SUPERUSER",
+        "is_dir": true
+    },
+    {
+        "name": "数据库操作",
+        "module": "exec_sql",
+        "module_path": "plugins.exec_sql",
+        "description": "执行sql语句与查看表",
+        "usage": "查看所有表\n    exec [sql语句]",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "SUPERUSER",
+        "is_dir": false
+    },
+    {
+        "name": "群组标签管理",
+        "module": "tag_manage",
+        "module_path": "plugins.tag_manage",
+        "description": "用于管理和操作群组标签",
+        "usage": "### 🏷️ 群组标签管理\n用于创建和管理群组标签，以实现对群组的批量操作和筛选。\n\n---\n\n#### **✨ 核心命令**\n\n- **`tag list`** (别名: `ls`)\n    - 查看所有标签及其基本信息。\n\n- **`tag info <标签名>`**\n    - 查看指定标签的详细信息，包括关联群组或动态规则的匹配结果。\n\n- **`tag create <标签名> [选项...]`**\n    - 创建一个新标签。\n    - **选项**:\n        - `--type <static|dynamic>`: 标签类型，默认为 `static`。\n            - `static`: 静态标签，需手动关联群组。\n            - `dynamic`: 动态标签，根据规则自动匹配。\n        - `-g <群号...>`: **(静态)** 初始关联的群组ID。\n        - `--rule \"<规则>\"`: **(动态)** 定义动态规则，**规则必须用引号包裹**。\n        - `--desc \"<描述>\"`: 为标签添加描述。\n        - `--blacklist`: **(静态)** 将标签设为黑名单（排除）模式。\n\n- **`tag edit <标签名> [操作...]`**\n    - 编辑一个已存在的标签。\n    - **通用操作**:\n        - `--rename <新名>`: 重命名标签。\n        - `--desc \"<描述>\"`: 更新描述。\n        - `--mode <white|black>`: 切换为白名单/黑名单模式。\n    - **静态标签操作**:\n        - `--add <群号...>`: 添加群组。\n        - `--remove <群号...>`: 移除群组。\n        - `--set <群号...>`: **[覆盖]** 重新设置所有关联群组。\n    - **动态标签操作**:\n        - `--rule \"<新规则>\"`: 更新动态规则。\n\n- **`tag delete <名1> [名2] ...`**\n     - 删除一个或多个标签。\n\n- **`tag clear`**\n     - **[⚠️ 危险]** 删除所有标签，操作前会请求确认。\n\n---\n\n#### **🔧 动态规则速查**\n规则支持 `and` 和 `or` 组合（`and` 优先）。\n**包含空格或特殊字符的规则值建议用英文引号包裹**。\n\n- `member_count > 100`\n  按 **群成员数** 筛选 (`>`, `>=`, `<`, `<=`, `=`)。\n\n- `level >= 5`\n  按 **群权限等级** 筛选。\n\n- `status = true`\n  按 **群是否休眠** 筛选 (`true` / `false`)。\n\n- `is_super = false`\n  按 **群是否为白名单** 筛选 (`true` / `false`)。\n\n- `group_name contains \"模式\"`\n  按 **群名模糊/正则匹配**。\n  例: `contains \"测试.*群$\"` 匹配以“测试”开头、“群”结尾的群名。\n\n- `group_name in \"群1,群2\"`\n  按 **群名多值精确匹配** (英文逗号分隔)。\n\n---\n\n#### **💡 使用示例**\n\n##### 静态标签示例\n```bash\n# 创建一个名为“核心群”的静态标签，并关联两个群组\ntag create 核心群 -g 12345 67890 --desc \"核心业务群\"\n\n# 向“核心群”中添加一个新群组\ntag edit 核心群 --add 98765\n\n# 创建一个用于排除的黑名单标签\ntag create 排除群 --blacklist -g 11111\n```\n\n##### 动态标签示例\n```bash\n# 创建一个动态标签，匹配所有成员数大于200的群\ntag create 大群 --type dynamic --rule \"member_count > 200\"\n\n# 创建一个匹配高权限且未休眠的群的标签\ntag create 活跃管理群 --type dynamic --rule \"level > 5 and status = true\"\n\n# 创建一个匹配群名包含“核心”或“测试”的标签\ntag create 业务群 --type dynamic --rule \"group_name contains 核心 or group_name contains 测试\"\n```",
+        "author": "HibiKier",
+        "version": "1.0.0",
+        "plugin_type": "SUPERUSER",
+        "is_dir": false
     }
 ]

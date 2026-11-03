@@ -1,6 +1,5 @@
 from io import BytesIO
 
-import imagehash
 from nonebot.adapters import Bot, Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import At as alcAt
@@ -13,6 +12,23 @@ from zhenxun.utils.http_utils import AsyncHttpx
 
 from ._data_source import get_img_and_at_list
 from ._model import WordBank
+
+
+def _image_hash(content: bytes) -> str:
+    """计算图片的平均哈希
+
+    参数:
+        content: 图片数据
+
+    返回:
+        str: 16 位十六进制哈希值
+    """
+    with Image.open(BytesIO(content)) as image:
+        gray = image.convert("L").resize((8, 8), Image.Resampling.LANCZOS)
+    pixels = list(gray.tobytes())
+    mean = sum(pixels) / len(pixels)
+    bits = "".join("1" if pixel > mean else "0" for pixel in pixels)
+    return f"{int(bits, 2):016x}"
 
 
 async def check(
@@ -28,7 +44,7 @@ async def check(
     if not text and len(img_list) == 1:
         try:
             r = await AsyncHttpx.get(img_list[0])
-            problem = str(imagehash.average_hash(Image.open(BytesIO(r.content))))
+            problem = _image_hash(r.content)
         except Exception as e:
             logger.warning("获取图片失败", "词条检测", session=session, e=e)
     if at_list:

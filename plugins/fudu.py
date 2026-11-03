@@ -7,7 +7,6 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-import imagehash
 from nonebot import on_message
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11 import Message as V11Message
@@ -218,8 +217,20 @@ def _set_cached_image_hash(url: str, img_hash: str) -> None:
 
 
 def _calc_image_hash(content: bytes) -> str:
+    """计算图片的平均哈希
+
+    参数:
+        content: 图片数据
+
+    返回:
+        str: 16 位十六进制哈希值
+    """
     with Image.open(BytesIO(content)) as image:
-        return str(imagehash.average_hash(image))
+        gray = image.convert("L").resize((8, 8), Image.Resampling.LANCZOS)
+    pixels = list(gray.tobytes())
+    mean = sum(pixels) / len(pixels)
+    bits = "".join("1" if pixel > mean else "0" for pixel in pixels)
+    return f"{int(bits, 2):016x}"
 
 
 async def _get_image_hash_by_url(url: str) -> str:

@@ -61,6 +61,11 @@
 |[三千API](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/qian_api)|包含 抠图/上色/超分 功能|
 |[点赞](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/send_like)|给你点赞|
 |[伪人AI](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/bym_ai)|超级强力AI（引入养成系统）|
+|[小真寻银行](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/mahiro_bank)|存款取款赚利息，存款额度与好感度有关|
+|[查看信息](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/info)|查看自己的金币、好感度和功能调用等个人信息|
+|[广播](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/broadcast)|超级用户向所有群或指定标签的群发送消息|
+|[数据库操作](https://github.com/zhenxun-org/zhenxun_bot_plugins/blob/main/plugins/exec_sql.py)|超级用户执行 SQL 语句与查看表|
+|[群组标签管理](https://github.com/zhenxun-org/zhenxun_bot_plugins/blob/main/plugins/tag_manage.py)|超级用户创建和管理群组标签，用于批量操作和筛选|
 
 
 
