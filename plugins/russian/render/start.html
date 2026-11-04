@@ -225,8 +225,8 @@
     </div>
 
     <footer class="footer-container">
-        <p class="creator-credit"></p>
-        <p class="timestamp"></p>
+        <p class="creator-credit">Powered by Zhenxun Bot</p>
+        <p class="timestamp">{{ now().strftime('%Y-%m-%d %H:%M:%S') }}</p>
     </footer>
 </body>
 
@@ -257,27 +257,5 @@
 </style>
 
 
-<script>
-    (function () {
-        const creatorText = "Powered by Zhenxun Bot";
-        const creditElement = document.querySelector('.creator-credit');
-        if (creditElement) {
-            creditElement.innerText = creatorText;
-        }
-
-        const timestampElement = document.querySelector('.timestamp');
-        if (timestampElement) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-            timestampElement.innerText = formattedDateTime;
-        }
-    })();
-</script>
 
 </html>

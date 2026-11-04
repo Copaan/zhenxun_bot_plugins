@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            margin: 0;
+            background: #f4f5f7;
+            font-family: "Microsoft YaHei", sans-serif;
+            color: #18191c;
+        }
+        .card {
+            margin: 16px;
+            padding: 22px 24px 18px;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
+        .author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .face {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e3e5e7;
+            flex-shrink: 0;
+        }
+        .name {
+            font-size: 17px;
+            font-weight: bold;
+            color: #fb7299;
+        }
+        .time {
+            margin-top: 2px;
+            font-size: 13px;
+            color: #9499a0;
+        }
+        .title {
+            margin: 18px 0 4px;
+            font-size: 22px;
+            font-weight: bold;
+            line-height: 1.45;
+        }
+        .content {
+            margin-top: 12px;
+            font-size: 16px;
+            line-height: 1.75;
+        }
+        .text {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .center {
+            text-align: center;
+        }
+        .quote {
+            margin: 6px 0;
+            padding: 6px 14px;
+            color: #61666d;
+            background: #f6f7f8;
+            border-radius: 0 8px 8px 0;
+            box-shadow: inset 4px 0 0 #e3e5e7;
+            white-space: pre-wrap;
+        }
+        .bold {
+            font-weight: bold;
+        }
+        .link {
+            color: #008ac5;
+        }
+        .emoji {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            vertical-align: -5px;
+        }
+        .line {
+            height: 1px;
+            margin: 14px 0;
+            background: #e3e5e7;
+        }
+        .code {
+            margin: 8px 0;
+            padding: 12px 14px;
+            font-family: Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: #f6f7f8;
+            border-radius: 8px;
+        }
+        .list {
+            margin: 4px 0;
+            padding-left: 22px;
+        }
+        .images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0;
+        }
+        .images img {
+            width: 182px;
+            height: 182px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #e3e5e7;
+        }
+        .images.single img {
+            width: 100%;
+            height: auto;
+        }
+        .images.double img {
+            width: 277px;
+            height: 277px;
+        }
+        .more {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #9499a0;
+            text-align: center;
+        }
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 12px;
+            font-size: 13px;
+            color: #9499a0;
+            box-shadow: inset 0 1px 0 #f1f2f3;
+        }
+        .stats {
+            display: flex;
+            gap: 18px;
+        }
+    </style>
+</head>
+<body>
+{%- macro pic(url, size) -%}
+{{ url ~ '@' ~ size ~ '.webp' if 'hdslb.com' in url and '@' not in url else url }}
+{%- endmacro -%}
+{%- macro runs(items) -%}
+{%- for run in items -%}
+{%- if run.emoji -%}<img class="emoji" src="{{ pic(run.emoji, '44w_44h') }}">
+{%- else -%}<span class="{{ 'bold' if run.bold }}{{ ' link' if run.link }}">{{ run.text }}</span>
+{%- endif -%}
+{%- endfor -%}
+{%- endmacro -%}
+<div class="card">
+    <div class="author">
+        <img class="face" src="{{ pic(author.face, '96w_96h_1c') }}">
+        <div>
+            <div class="name">{{ author.name }}</div>
+            <div class="time">{{ author.time }}</div>
+        </div>
+    </div>
+    {% if title %}<div class="title">{{ title }}</div>{% endif %}
+    <div class="content">
+        {% for block in blocks %}
+        {% if block.type == 'text' %}
+        <div class="text{{ ' center' if block.center }}">{{ runs(block.runs) }}</div>
+        {% elif block.type == 'quote' %}
+        <div class="quote">{{ runs(block.runs) }}</div>
+        {% elif block.type == 'image' %}
+        {% set count = block.urls | length %}
+        <div class="images{{ ' single' if count == 1 else (' double' if count in (2, 4) else '') }}">
+            {% for url in block.urls %}
+            <img src="{{ pic(url, '1184w' if count == 1 else '566w_566h_1c') }}">
+            {% endfor %}
+        </div>
+        {% elif block.type == 'line' %}
+        <div class="line"></div>
+        {% elif block.type == 'code' %}
+        <div class="code">{{ block.text }}</div>
+        {% elif block.type == 'list' %}
+        <ul class="list">
+            {% for item in block['items'] %}<li>{{ runs(item) }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% endfor %}
+        {% if truncated %}<div class="more">内容较长，完整内容请查看原文</div>{% endif %}
+    </div>
+    <div class="footer">
+        <div class="stats">
+            <span>点赞 {{ stat.like }}</span>
+            <span>评论 {{ stat.comment }}</span>
+            <span>转发 {{ stat.forward }}</span>
+        </div>
+        <span>哔哩哔哩图文</span>
+    </div>
+</div>
+</body>
+</html>

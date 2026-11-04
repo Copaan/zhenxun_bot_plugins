@@ -1,13 +1,11 @@
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_session import EventSession
-from zhenxun.configs.path_config import IMAGE_PATH
-from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
-from zhenxun.utils.http_utils import AsyncPlaywright
 from zhenxun.utils.message import MessageUtils
 
-from .data_source import get_cookie, get_hot_image
+from .data_source import get_hot_image
 
 __plugin_meta__ = PluginMetadata(
     name="微博热搜",
@@ -15,14 +13,13 @@ __plugin_meta__ = PluginMetadata(
     usage="""
     指令：
         微博热搜：发送实时热搜
-        微博热搜 [id]：截图该热搜页面
+        微博热搜 [id]：发送该热搜的链接
         示例：微博热搜 5
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
         version="0.2",
         commands=[Command(command="微博热搜 ?[id]")],
-        configs=[RegisterConfig(key="cookie", value=None, help="微博cookie")],
     ).to_dict(),
 )
 
@@ -37,21 +34,15 @@ async def _(session: EventSession, arparma: Arparma, idx: Match[int]):
         await MessageUtils.build_message(result).finish(reply_to=True)
     if idx.available:
         _idx = idx.result
-        url = data_list[_idx - 1]["url"]
-        file = IMAGE_PATH / "temp" / f"wbtop_{session.id1}.png"
-        cookies = get_cookie(url)
-        if isinstance(cookies, str):
-            await MessageUtils.build_message(cookies).finish(reply_to=True)
-        img = await AsyncPlaywright.screenshot(
-            url, file, "#pl_feed_main", wait_time=12, cookies=cookies
-        )
-        if img:
-            await MessageUtils.build_message(file).send()
-            logger.info(
-                f"查询微博热搜 Id: {_idx}", arparma.header_result, session=session
-            )
-        else:
-            await MessageUtils.build_message("获取图片失败...").send()
+        if not 0 < _idx <= len(data_list):
+            await MessageUtils.build_message(
+                f"热搜序号需在 1~{len(data_list)} 之间..."
+            ).finish(reply_to=True)
+        data = data_list[_idx - 1]
+        await MessageUtils.build_message(
+            f"{_idx}. {data['hot_word']}\n{data['url']}"
+        ).send()
+        logger.info(f"查询微博热搜 Id: {_idx}", arparma.header_result, session=session)
     else:
         await MessageUtils.build_message(result).send()
         logger.info("查询微博热搜", arparma.header_result, session=session)

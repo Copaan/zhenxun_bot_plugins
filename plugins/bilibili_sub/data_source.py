@@ -22,11 +22,11 @@ from .filter import is_ad as is_dynamic_ad
 from .model import BiliSub, BiliSubTarget
 from .utils import (
     get_cached_bangumi_cover,
-    get_dynamic_screenshot,
     get_room_info_by_id,
     get_user_card,
     get_user_dynamics,
     get_videos,
+    render_dynamic_card,
 )
 
 ResourceDirManager.add_temp_dir(DYNAMIC_PATH)
@@ -902,12 +902,12 @@ async def get_user_dynamic(
             f"检测到新动态: UID={uid}, 用户名={sub.uname}, 动态ID={dynamic_id}, 发布时间={dynamic_time_str}"
         )
 
-        logger.debug(f"开始获取动态截图: UID={uid}, 动态ID={dynamic_id}")
+        logger.debug(f"开始获取动态卡片: UID={uid}, 动态ID={dynamic_id}")
         try:
-            image = await get_dynamic_screenshot(dynamic_id)
+            image = await render_dynamic_card(dynamic_id)
             if image:
                 logger.debug(
-                    f"成功获取动态截图: UID={uid}, 动态ID={dynamic_id}, 图片大小={len(image)}字节"
+                    f"成功获取动态卡片: UID={uid}, 动态ID={dynamic_id}, 图片大小={len(image)}字节"
                 )
 
                 duration = time.time() - start_time
@@ -922,10 +922,10 @@ async def get_user_dynamic(
                     dynamic_images if dynamic_images else None,
                 )
             else:
-                logger.warning(f"动态截图获取失败: UID={uid}, 动态ID={dynamic_id}")
+                logger.warning(f"动态卡片获取失败: UID={uid}, 动态ID={dynamic_id}")
         except Exception as e:
             logger.error(
-                f"获取动态截图异常: UID={uid}, 动态ID={dynamic_id}, 异常类型={type(e).__name__}, 异常信息={e}"
+                f"获取动态卡片异常: UID={uid}, 动态ID={dynamic_id}, 异常类型={type(e).__name__}, 异常信息={e}"
             )
             import traceback
 

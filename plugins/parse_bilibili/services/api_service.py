@@ -1,9 +1,10 @@
 import asyncio
+import html
 from typing import Any, cast
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import httpx
-from bilibili_api import article, live, user, video
+from bilibili_api import article, live, opus, user, video
 from bilibili_api import exceptions as BiliExceptions
 from zhenxun.services.log import logger
 from zhenxun.utils.decorator.retry import Retry
@@ -29,6 +30,111 @@ from ..utils.exceptions import (
     ResourceNotFoundError,
     UrlParseError,
 )
+
+OPUS_MAX_BLOCKS = 150
+"""图文卡片最多展示的段落数"""
+OPUS_MAX_IMAGES = 18
+"""图文卡片最多展示的图片数"""
+
+
+def _https(url: str) -> str:
+    return f"https:{url}" if url.startswith("//") else url
+
+
+def _opus_runs(nodes: list[dict] | None) -> list[dict]:
+    """把图文段落的文字节点转为卡片文字片段
+
+    参数:
+        nodes: 段落文字节点
+
+    返回:
+        list[dict]: 文字片段，含 text、bold、link 或 emoji
+    """
+    runs = []
+    for node in nodes or []:
+        if word := node.get("word"):
+            style = word.get("style") or {}
+            runs.append(
+                {"text": word.get("words", ""), "bold": bool(style.get("bold"))}
+            )
+        elif rich := node.get("rich"):
+            if emoji := rich.get("emoji"):
+                runs.append({"emoji": _https(emoji.get("icon_url", ""))})
+            else:
+                runs.append({"text": rich.get("text", ""), "link": True})
+    return runs
+
+
+def build_opus_card(data: dict) -> dict:
+    """把图文详情整理为图文卡片模板数据
+
+    参数:
+        data: 图文详情接口返回的数据
+
+    返回:
+        dict: 标题、作者、段落、互动数据
+    """
+    modules: dict[str, dict] = {}
+    for module in data.get("item", {}).get("modules") or []:
+        modules.update(
+            {k: v for k, v in module.items() if k.startswith("module_") and v}
+        )
+    author = modules.get("module_author") or {}
+    stat = modules.get("module_stat") or {}
+    content = modules.get("module_content") or {}
+    blocks: list[dict] = []
+    images = 0
+    truncated = False
+    for para in content.get("paragraphs") or []:
+        if len(blocks) >= OPUS_MAX_BLOCKS:
+            truncated = True
+            break
+        kind = para.get("para_type")
+        center = para.get("align") == 1
+        if kind in (1, 4):
+            runs = _opus_runs((para.get("text") or {}).get("nodes"))
+            blocks.append(
+                {
+                    "type": "quote" if kind == 4 else "text",
+                    "runs": runs,
+                    "center": center,
+                }
+            )
+        elif kind == 2:
+            pics = (para.get("pic") or {}).get("pics") or []
+            urls = [_https(p.get("url", "")) for p in pics if p.get("url")]
+            urls = urls[: max(OPUS_MAX_IMAGES - images, 0)]
+            if urls:
+                images += len(urls)
+                blocks.append({"type": "image", "urls": urls})
+        elif kind == 3:
+            blocks.append({"type": "line"})
+        elif kind == 5:
+            items = (para.get("list") or {}).get("items") or []
+            blocks.append(
+                {
+                    "type": "list",
+                    "items": [_opus_runs(item.get("nodes")) for item in items],
+                }
+            )
+        elif kind == 7:
+            code = (para.get("code") or {}).get("content", "")
+            blocks.append({"type": "code", "text": html.unescape(code)})
+    return {
+        "title": (modules.get("module_title") or {}).get("text", ""),
+        "author": {
+            "name": author.get("name", ""),
+            "face": _https(author.get("face", "")),
+            "time": author.get("pub_time", ""),
+        },
+        "blocks": blocks,
+        "truncated": truncated,
+        "stat": {
+            key: (stat.get(key) or {}).get("count", 0)
+            for key in ("like", "comment", "forward")
+        },
+    }
+
 
 RETRYABLE_EXCEPTIONS = (
     BiliExceptions.NetworkException,
@@ -363,6 +469,50 @@ class BilibiliApiService:
                 cause=e,
                 context={"room_id": room_id, "url": parsed_url},
             )
+
+    @staticmethod
+    @Retry.api(exception=RETRYABLE_EXCEPTIONS)  # type: ignore
+    async def get_opus_info(opus_id: str, parsed_url: str) -> ArticleInfo:
+        """获取图文动态信息
+
+        参数:
+            opus_id: 图文 ID
+            parsed_url: 解析后的链接
+
+        返回:
+            ArticleInfo: 图文信息，opus 为图文卡片模板数据
+        """
+        logger.debug(f"获取图文信息: {opus_id}", "B站解析")
+        context = {"opus_id": opus_id, "url": parsed_url}
+        try:
+            data = await opus.Opus(int(opus_id), credential=get_credential()).get_info()
+        except BiliExceptions.ResponseCodeException as e:
+            context["code"] = e.code  # type: ignore
+            if e.code in (-404, 4101131):
+                raise ResourceNotFoundError(
+                    f"图文未找到: {opus_id}", cause=e, context=context
+                )
+            raise BilibiliResponseError(
+                f"B站API错误: {e.msg}", cause=e, context=context
+            )
+        except BiliExceptions.NetworkException as e:
+            raise BilibiliRequestError(
+                f"获取图文信息网络错误: {e}", cause=e, context=context
+            )
+        card = build_opus_card(data)
+        return ArticleInfo(
+            id=opus_id,
+            type="opus",
+            url=parsed_url,
+            title=card["title"],
+            author=card["author"]["name"],
+            markdown_content="\n".join(
+                "".join(run.get("text", "") for run in block["runs"])
+                for block in card["blocks"]
+                if block["type"] in ("text", "quote")
+            ),
+            opus=card,
+        )
 
     @staticmethod
     @Retry.api(exception=RETRYABLE_EXCEPTIONS)  # type: ignore

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            margin: 0;
+            background: #f4f5f7;
+            font-family: "Microsoft YaHei", sans-serif;
+            color: #18191c;
+        }
+        .card {
+            margin: 16px;
+            padding: 22px 24px 18px;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        }
+        .author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .face {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e3e5e7;
+            flex-shrink: 0;
+        }
+        .name {
+            font-size: 17px;
+            font-weight: bold;
+            color: #fb7299;
+        }
+        .time {
+            margin-top: 2px;
+            font-size: 13px;
+            color: #9499a0;
+        }
+        .title {
+            margin-top: 14px;
+            font-size: 19px;
+            font-weight: bold;
+            line-height: 1.45;
+        }
+        .text {
+            margin-top: 12px;
+            font-size: 16px;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .link-text {
+            color: #008ac5;
+        }
+        .emoji {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            vertical-align: -5px;
+        }
+        .images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .images img {
+            width: 182px;
+            height: 182px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #e3e5e7;
+        }
+        .images.double img {
+            width: 277px;
+            height: 277px;
+        }
+        .images.single img {
+            width: 100%;
+            height: auto;
+        }
+        .orig {
+            margin-top: 12px;
+            padding: 14px;
+            background: #f6f7f8;
+            border-radius: 10px;
+        }
+        .orig .name {
+            font-size: 15px;
+            color: #008ac5;
+        }
+        .orig .text {
+            margin-top: 6px;
+            font-size: 15px;
+        }
+        .orig .images img {
+            width: 173px;
+            height: 173px;
+        }
+        .orig .images.double img {
+            width: 263px;
+            height: 263px;
+        }
+        .orig .images.single img {
+            width: 100%;
+            height: auto;
+        }
+        .media {
+            display: flex;
+            gap: 14px;
+            height: 130px;
+            margin-top: 12px;
+            overflow: hidden;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: inset 0 0 0 1px #e3e5e7;
+        }
+        .cover {
+            position: relative;
+            width: 208px;
+            height: 130px;
+            flex-shrink: 0;
+            background: #e3e5e7;
+        }
+        .cover img {
+            width: 208px;
+            height: 130px;
+            object-fit: cover;
+        }
+        .duration {
+            position: absolute;
+            right: 6px;
+            bottom: 6px;
+            padding: 0 6px;
+            font-size: 12px;
+            line-height: 20px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 4px;
+        }
+        .media-body {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            box-sizing: border-box;
+            height: 130px;
+            padding: 12px 14px 12px 0;
+        }
+        .media-title {
+            font-size: 15px;
+            font-weight: bold;
+            line-height: 1.5;
+            max-height: 45px;
+            overflow: hidden;
+        }
+        .media-desc {
+            margin-top: 6px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #61666d;
+            max-height: 39px;
+            overflow: hidden;
+        }
+        .media-stat {
+            margin-top: auto;
+            font-size: 12px;
+            color: #9499a0;
+        }
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 12px;
+            font-size: 13px;
+            color: #9499a0;
+            box-shadow: inset 0 1px 0 #f1f2f3;
+        }
+        .stats {
+            display: flex;
+            gap: 18px;
+        }
+    </style>
+</head>
+<body>
+{%- macro pic(url, size) -%}
+{{ url ~ '@' ~ size ~ '.webp' if 'hdslb.com' in url and '@' not in url else url }}
+{%- endmacro -%}
+{%- macro body(card) -%}
+{%- if card.title %}<div class="title">{{ card.title }}</div>{% endif -%}
+{%- if card.runs -%}
+<div class="text">
+{%- for run in card.runs -%}
+{%- if run.emoji -%}<img class="emoji" src="{{ pic(run.emoji, '44w_44h') }}">
+{%- else -%}<span class="{{ 'link-text' if run.link }}">{{ run.text }}</span>
+{%- endif -%}
+{%- endfor -%}
+</div>
+{%- endif -%}
+{%- if card.images -%}
+{%- set count = card.images | length -%}
+<div class="images{{ ' single' if count == 1 else (' double' if count in (2, 4) else '') }}">
+    {%- for url in card.images -%}
+    <img src="{{ pic(url, '1184w' if count == 1 else '566w_566h_1c') }}">
+    {%- endfor -%}
+</div>
+{%- endif -%}
+{%- set media = card.video or card.link -%}
+{%- if media -%}
+<div class="media">
+    <div class="cover">
+        {% if media.cover %}<img src="{{ pic(media.cover, '416w_260h_1c') }}">{% endif %}
+        {% if card.video and media.duration %}<span class="duration">{{ media.duration }}</span>{% endif %}
+    </div>
+    <div class="media-body">
+        <div class="media-title">{{ media.title }}</div>
+        {% if media.desc %}<div class="media-desc">{{ media.desc }}</div>{% endif %}
+        {% if card.video %}<div class="media-stat">播放 {{ media.play }} · 弹幕 {{ media.danmaku }}</div>{% endif %}
+    </div>
+</div>
+{%- endif -%}
+{%- endmacro -%}
+<div class="card">
+    <div class="author">
+        <img class="face" src="{{ pic(author.face, '96w_96h_1c') }}">
+        <div>
+            <div class="name">{{ author.name }}</div>
+            <div class="time">{{ author.time }}{% if author.action %} · {{ author.action }}{% endif %}</div>
+        </div>
+    </div>
+    {{ body(data) }}
+    {% if orig %}
+    <div class="orig">
+        {% if orig.author.name %}<div class="name">@{{ orig.author.name }}</div>{% endif %}
+        {{ body(orig) }}
+    </div>
+    {% endif %}
+    <div class="footer">
+        <div class="stats">
+            <span>点赞 {{ stat.like }}</span>
+            <span>评论 {{ stat.comment }}</span>
+            <span>转发 {{ stat.forward }}</span>
+        </div>
+        <span>哔哩哔哩动态</span>
+    </div>
+</div>
+</body>
+</html>

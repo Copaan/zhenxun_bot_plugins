@@ -1,12 +1,13 @@
 import asyncio
 import datetime
-import traceback
+import json
 from pathlib import Path
 
 from bilibili_api import Credential as BilibiliCredential
+from bilibili_api import dynamic as bilibili_dynamic_module
 from bilibili_api import live as bilibili_live_module
 from bilibili_api import user as bilibili_user_module
-from nonebot_plugin_htmlrender import get_new_page
+from zhenxun import ui
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
@@ -260,51 +261,138 @@ async def get_room_info_by_id(
     return await liveroom_instance.get_room_info()
 
 
-async def get_dynamic_screenshot(dynamic_id: int) -> bytes | None:
-    url = f"https://t.bilibili.com/{dynamic_id}"
+DYNAMIC_MAX_IMAGES = 9
+"""动态卡片最多展示的图片数"""
+TEMPLATE_PATH = Path(__file__).parent / "templates" / "dynamic_card.html"
+
+
+def _https(url: str) -> str:
+    return f"https:{url}" if url.startswith("//") else url
+
+
+def _rich_runs(nodes: list[dict] | None) -> list[dict]:
+    """把动态富文本节点转为卡片文字片段
+
+    参数:
+        nodes: 富文本节点
+
+    返回:
+        list[dict]: 文字片段，含 text、link 或 emoji
+    """
+    runs = []
+    for node in nodes or []:
+        node_type = node.get("type", "")
+        if node_type == "RICH_TEXT_NODE_TYPE_EMOJI" and node.get("emoji"):
+            runs.append({"emoji": _https(node["emoji"].get("icon_url", ""))})
+        else:
+            runs.append(
+                {
+                    "text": node.get("text", ""),
+                    "link": node_type != "RICH_TEXT_NODE_TYPE_TEXT",
+                }
+            )
+    return runs
+
+
+def build_dynamic_card(item: dict) -> dict:
+    """把动态详情整理为动态卡片模板数据，转发动态的原动态放在 orig 中
+
+    参数:
+        item: 动态详情接口返回的 item
+
+    返回:
+        dict: 作者、文字、图片、视频等卡片内容
+    """
+    modules = item.get("modules") or {}
+    author = modules.get("module_author") or {}
+    dynamic = modules.get("module_dynamic") or {}
+    major = dynamic.get("major") or {}
+    card: dict = {
+        "author": {
+            "name": author.get("name", ""),
+            "face": _https(author.get("face", "")),
+            "time": author.get("pub_time", ""),
+            "action": author.get("pub_action", ""),
+        },
+        "title": "",
+        "runs": _rich_runs((dynamic.get("desc") or {}).get("rich_text_nodes")),
+        "images": [],
+        "video": None,
+        "link": None,
+        "orig": None,
+    }
+    major_type = major.get("type", "")
+    if major_type == "MAJOR_TYPE_OPUS":
+        opus = major.get("opus") or {}
+        card["title"] = opus.get("title") or ""
+        card["runs"] += _rich_runs((opus.get("summary") or {}).get("rich_text_nodes"))
+        card["images"] = [_https(p["url"]) for p in opus.get("pics") or []]
+    elif major_type == "MAJOR_TYPE_DRAW":
+        items = (major.get("draw") or {}).get("items") or []
+        card["images"] = [_https(i["src"]) for i in items]
+    elif major_type == "MAJOR_TYPE_ARCHIVE":
+        archive = major.get("archive") or {}
+        stat = archive.get("stat") or {}
+        card["video"] = {
+            "cover": _https(archive.get("cover", "")),
+            "title": archive.get("title", ""),
+            "desc": archive.get("desc", ""),
+            "duration": archive.get("duration_text", ""),
+            "play": stat.get("play", ""),
+            "danmaku": stat.get("danmaku", ""),
+        }
+    elif major_type == "MAJOR_TYPE_LIVE_RCMD":
+        try:
+            live = json.loads((major.get("live_rcmd") or {}).get("content", "{}"))
+        except ValueError:
+            live = {}
+        info = live.get("live_play_info") or {}
+        card["link"] = {
+            "cover": _https(info.get("cover", "")),
+            "title": info.get("title", ""),
+            "desc": "直播中" if info.get("live_status") == 1 else "",
+        }
+    elif major_type == "MAJOR_TYPE_NONE":
+        tips = (major.get("none") or {}).get("tips") or "源动态已被删除"
+        card["runs"] += [{"text": tips}]
+    elif major_type:
+        key = major_type.removeprefix("MAJOR_TYPE_").lower()
+        data = major.get(key) or {}
+        covers = data.get("covers") or [data.get("cover", "")]
+        card["link"] = {
+            "cover": _https(covers[0] if covers else ""),
+            "title": data.get("title", ""),
+            "desc": data.get("desc") or data.get("desc1") or "",
+        }
+    card["images"] = card["images"][:DYNAMIC_MAX_IMAGES]
+    if orig := item.get("orig"):
+        card["orig"] = build_dynamic_card(orig)
+    stat = modules.get("module_stat") or {}
+    card["stat"] = {
+        key: (stat.get(key) or {}).get("count", 0)
+        for key in ("like", "comment", "forward")
+    }
+    return card
+
+
+async def render_dynamic_card(dynamic_id: int) -> bytes | None:
+    """获取动态详情并渲染为动态卡片
+
+    参数:
+        dynamic_id: 动态 ID
+
+    返回:
+        bytes | None: 卡片图片，动态不存在或获取失败时为 None
+    """
     try:
-        async with get_new_page(
-            viewport={"width": 2000, "height": 1000},
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-            device_scale_factor=3,
-        ) as page:
-            credential = get_credential()
-            if credential:
-                try:
-                    cookies = credential.get_cookies()
-                    if cookies:
-                        await page.context.add_cookies(
-                            [
-                                {
-                                    "domain": ".bilibili.com",
-                                    "name": name,
-                                    "path": "/",
-                                    "value": value,
-                                }
-                                for name, value in cookies.items()
-                            ]
-                        )
-                except Exception as e:
-                    logger.warning(f"获取 cookies 失败: {e}")
-            await page.goto(url, wait_until="networkidle")
-            if page.url == "https://www.bilibili.com/404":
-                logger.warning(f"动态 {dynamic_id} 不存在")
-                return None
-            await page.wait_for_load_state(state="domcontentloaded")
-            card = await page.query_selector(".card")
-            assert card
-            clip = await card.bounding_box()
-            assert clip
-            bar = await page.query_selector(".bili-tabs__header")
-            assert bar
-            bar_bound = await bar.bounding_box()
-            assert bar_bound
-            clip["height"] = bar_bound["y"] - clip["y"]
-            return await page.screenshot(clip=clip, full_page=True)
-    except Exception:
-        logger.warning(
-            f"Error in get_dynamic_screenshot({url}): {traceback.format_exc()}"
-        )
+        data = await bilibili_dynamic_module.Dynamic(
+            dynamic_id, credential=get_credential()
+        ).get_info()
+        card = build_dynamic_card(data["item"])
+        component = ui.template(TEMPLATE_PATH, data=card)
+        return await ui.render(component, viewport={"width": 640, "height": 10})
+    except Exception as e:
+        logger.warning(f"动态卡片生成失败: {dynamic_id}", e=e)
     return None
 
 

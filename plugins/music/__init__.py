@@ -3,8 +3,8 @@ from pathlib import Path
 from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
-from nonebot_plugin_htmlrender import template_to_pic
 from nonebot_plugin_uninfo import Uninfo
+from zhenxun import ui
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.utils import (
     AICallableParam,
@@ -65,16 +65,8 @@ async def build_zhenxun(meta_data: MusicMetaData):
         "self_nickname": BotConfig.self_nickname,
         **dict(meta_data),
     }
-    result = await template_to_pic(
-        template_path=str((Path(__file__).parent / "templates").absolute()),
-        template_name="info.html",
-        templates={"data": data},
-        pages={
-            "viewport": {"width": 600, "height": 220},
-            "base_url": f"file://{Path(__file__).parent}",
-        },
-        wait=2,
-    )
+    component = ui.template(Path(__file__).parent / "templates" / "info.html", data)
+    result = await ui.render(component, viewport={"width": 640, "height": 220})
     message = [
         result,
         meta_data.url,

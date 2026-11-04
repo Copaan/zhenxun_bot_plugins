@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 from nonebot.compat import model_dump
@@ -12,6 +13,27 @@ from .config import (
     PerfectWorldPlatformDetailDataStats,
     UserMatchItem,
 )
+
+
+def _month_day(value: str | int) -> str:
+    """把时间戳或日期字符串格式化为 月-日
+
+    参数:
+        value: 秒或毫秒时间戳、ISO 日期字符串
+
+    返回:
+        str: 月-日，无法解析时原样返回
+    """
+    text = str(value).strip()
+    try:
+        if text.isdigit():
+            stamp = int(text)
+            return datetime.fromtimestamp(
+                stamp / 1000 if stamp > 10**11 else stamp
+            ).strftime("%m-%d")
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).strftime("%m-%d")
+    except (ValueError, OverflowError, OSError):
+        return text
 
 
 class Renderer:
@@ -91,6 +113,13 @@ class Renderer:
                 "player_stats": model_dump(player_info),
                 "avatar_url": avatar_url,
                 "season": season,
+                "trend": {
+                    "labels": [_month_day(d) for d in player_info.history_dates],
+                    "score_labels": [
+                        _month_day(s.time) for s in player_info.score_list
+                    ],
+                    "scores": [s.score for s in player_info.score_list],
+                },
             },
         )
         return await ui.render(
@@ -111,10 +140,16 @@ class Renderer:
         返回:
             bytes: 图片数据
         """
+        labels = [_month_day(d) for d in player_info.history_dates]
         template_component = ui.template(
             path=cls._get_template_path("official_user.html"),
             data={
                 "player_stats": model_dump(player_info),
+                "trend": {
+                    "labels": labels,
+                    "score_labels": labels,
+                    "scores": player_info.history_comprehensive_scores,
+                },
             },
         )
         return await ui.render(

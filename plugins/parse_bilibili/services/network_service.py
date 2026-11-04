@@ -138,7 +138,6 @@ class ParserService:
     ) -> VideoInfo | LiveInfo | ArticleInfo | UserInfo | SeasonInfo:
         """根据资源类型和ID获取详细信息"""
         from .api_service import BilibiliApiService
-        from .utility_service import ScreenshotService
 
         logger.debug(
             f"获取资源信息: 类型={resource_type.name}, ID={resource_id}",
@@ -158,14 +157,8 @@ class ParserService:
                 cv_id=resource_id, parsed_url=parsed_url
             )
         elif resource_type == ResourceType.OPUS:
-            screenshot_bytes = await ScreenshotService.get_opus_screenshot(
-                opus_id=resource_id, url=parsed_url
-            )
-            return ArticleInfo(
-                id=resource_id,
-                type="opus",
-                url=parsed_url,
-                screenshot_bytes=screenshot_bytes,
+            return await BilibiliApiService.get_opus_info(
+                opus_id=resource_id, parsed_url=parsed_url
             )
         elif resource_type == ResourceType.USER:
             return await BilibiliApiService.get_user_info(

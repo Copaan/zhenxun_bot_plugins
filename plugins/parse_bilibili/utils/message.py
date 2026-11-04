@@ -181,18 +181,12 @@ class MessageBuilder:
             f"构建文章/动态消息: {info.type} {info.id}, 渲染模式: {render_enabled}"
         )
 
-        if render_enabled:
-            if info.screenshot_bytes:
-                logger.debug("渲染模式：使用内存截图")
-                return UniMessage(Image(raw=info.screenshot_bytes))
-            elif info.screenshot_path:
-                path = Path(info.screenshot_path)
-                if path.exists():
-                    logger.debug(f"渲染模式：使用本地截图: {path}")
-                    return UniMessage(Image(path=path))
-                else:
-                    logger.error(f"渲染模式：截图路径不存在: {info.screenshot_path}")
-            logger.warning("渲染模式：无可用截图，将回退发送文本信息")
+        if render_enabled and info.opus:
+            try:
+                image = await render_opus_to_image(info)
+                return UniMessage(Image(raw=image))
+            except Exception as e:
+                logger.warning(f"图文卡片渲染失败，回退发送文本信息: {e}", "B站解析")
 
         segments = []
         has_content = False
@@ -519,6 +513,19 @@ async def render_user_info_to_image(info: UserInfo) -> bytes | None:
     component = ui.template(path=template_path, data=template_data)
 
     return await ui.render(component, viewport={"width": 500, "height": 10})
+
+
+async def render_opus_to_image(info: ArticleInfo) -> bytes:
+    """把图文动态渲染为图文卡片
+
+    参数:
+        info: 图文信息
+
+    返回:
+        bytes: 卡片图片
+    """
+    component = ui.template(path=TEMPLATE_DIR / "opus_card.html", data=info.opus or {})
+    return await ui.render(component, viewport={"width": 640, "height": 10})
 
 
 async def render_live_info_to_image(info: LiveInfo) -> bytes | None:

@@ -83,9 +83,9 @@ class ArticleInfo(BaseModel):
     url: str
     title: str | None = None
     author: str | None = None
-    screenshot_path: str | None = None
-    screenshot_bytes: bytes | None = None
     markdown_content: str | None = None
+    opus: dict | None = None
+    """图文卡片模板数据"""
 
 
 class UserStat(BaseModel):

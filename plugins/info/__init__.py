@@ -2,7 +2,6 @@ from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, At, Match, on_alconna
 from nonebot_plugin_uninfo import Uninfo
-from playwright.async_api import TimeoutError
 
 from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.models.group_member_info import GroupInfoUser

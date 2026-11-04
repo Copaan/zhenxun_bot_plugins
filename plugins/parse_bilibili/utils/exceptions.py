@@ -90,10 +90,6 @@ class FeatureError(BilibiliBaseException):
     """功能错误基类"""
 
 
-class ScreenshotError(FeatureError):
-    """截图失败，如浏览器渲染错误、页面加载失败等"""
-
-
 class DownloadError(FeatureError):
     """下载失败，如无法获取下载链接、写入文件失败等"""
 

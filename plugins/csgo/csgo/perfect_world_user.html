@@ -95,10 +95,7 @@
 
         .app-title {
             font-size: 38px;
-            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            color: var(--gradient-start);
             margin: 10px 0;
             font-weight: 800;
             letter-spacing: -0.5px;
@@ -224,14 +221,9 @@
 
         .player-name-main {
             font-size: 28px;
-            color: var(--text-dark);
             font-weight: 800;
             margin: 0 0 5px 0;
-            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            /* 为了渐变色 */
+            color: var(--gradient-start);
         }
 
         .player-steam-id {
@@ -513,10 +505,10 @@
             border-radius: 3px;
         }
     </style>
-    <script src="{{ asset('js/echarts.min.js') }}"></script>
 </head>
 
 <body>
+    {% from '_trend_chart.html' import trend_chart %}
     <div class="wrapper">
         <div class="app-header">
             <h1 class="app-title">完美CSGO用户数据</h1>
@@ -698,19 +690,19 @@
                 <div class="chart-box">
                     <h4 class="chart-title">Rating Pro</h4>
                     <div class="chart-canvas-container">
-                        <div id="pwRatingChart" style="width: 100%; height: 250px;"></div>
+                        {{ trend_chart('Rating', trend.labels, player_stats['history_pw_ratings'], '#d84315', '216, 67, 21', 349) }}
                     </div>
                 </div>
                 <div class="chart-box">
                     <h4 class="chart-title">RWS</h4>
                     <div class="chart-canvas-container">
-                        <div id="rwsChart" style="width: 100%; height: 250px;"></div>
+                        {{ trend_chart('RWS', trend.labels, player_stats['history_rws'], '#424242', '66, 66, 66', 349) }}
                     </div>
                 </div>
                 <div class="chart-box full-width-chart">
                     <h4 class="chart-title">天梯分数</h4>
                     <div class="chart-canvas-container">
-                        <div id="recentMatchScoreChart" style="width: 100%; height: 250px;"></div>
+                        {{ trend_chart('分数', trend.score_labels, trend.scores, '#00796b', '0, 121, 107', 752, true) }}
                     </div>
                 </div>
             </div>
@@ -778,192 +770,6 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // 历史数据 - 从 Jinja2 传递过来的 player_stats 字典中获取
-            const dates = {{ player_stats['history_dates'] | tojson }};
-            const historyPwRatings = {{ player_stats['history_pw_ratings'] | tojson }};
-            const historyRws = {{ player_stats['history_rws'] | tojson }};
-
-            // 近期比赛分数 - 从 player_stats['score_list'] 中提取分数和时间
-            const rawScoreList = {{ player_stats['score_list'] | tojson }};
-            const matchScores = rawScoreList.map(item => item.score);
-            const matchDates = rawScoreList.map(item => {
-                const date = new Date(item.time * 1000);
-                // 格式化日期为 MM-DD，与原 Chart.js 行为保持一致
-                return (date.getMonth() + 1).toString().padStart(2, '0') + '-' + date.getDate().toString().padStart(2, '0');
-            });
-
-            // --- ECharts 通用配置项函数 ---
-            // 旨在尽可能模拟原 Chart.js 的默认外观和行为
-            function createEChartsOption(title, labels, data, lineColorVar, areaColorRGBA) {
-                return {
-                    backgroundColor: 'transparent', // 确保背景透明，由父容器CSS控制
-                    animation: true, // 启用动画，与 Chart.js 默认平滑效果相似
-                    tooltip: {
-                        trigger: 'axis', // 坐标轴触发
-                        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue(
-                            lineColorVar.replace('--chart-line-', '--chart-tooltip-bg')), // 使用CSS变量获取背景色
-                        borderColor: getComputedStyle(document.documentElement).getPropertyValue(lineColorVar
-                            .replace('--chart-line-', '--border-color-light')), // 使用CSS变量获取边框颜色
-                        borderWidth: 1,
-                        textStyle: {
-                            color: getComputedStyle(document.documentElement).getPropertyValue(lineColorVar
-                                .replace('--chart-line-', '--chart-tooltip-text')) // 使用CSS变量获取文本颜色
-                        },
-                        // 自定义 tooltip 格式，尽可能与 Chart.js 默认相似
-                        formatter: function (params) {
-                            let label = params[0].seriesName || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (params[0].value !== null) {
-                                label += params[0].value.toFixed(2);
-                            }
-                            return label;
-                        }
-                    },
-                    xAxis: {
-                        type: 'category',
-                        data: labels,
-                        // X轴标签，除了天梯分数图，其他都隐藏
-                        axisLabel: {
-                            show: false,
-                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-dark'),
-                            fontSize: 12
-                        },
-                        axisLine: {
-                            lineStyle: {
-                                color: getComputedStyle(document.documentElement).getPropertyValue(
-                                    '--chart-grid-line')
-                            }
-                        },
-                        axisTick: {
-                            show: false
-                        }, // 隐藏刻度线
-                        splitLine: {
-                            show: false
-                        } // 隐藏X轴网格线
-                    },
-                    yAxis: {
-                        type: 'value',
-                        axisLabel: {
-                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-dark'),
-                            fontSize: 12
-                        },
-                        splitLine: {
-                            lineStyle: {
-                                color: getComputedStyle(document.documentElement).getPropertyValue(
-                                    '--chart-grid-line')
-                            }
-                        },
-                        axisLine: {
-                            show: false
-                        }, // 隐藏Y轴线
-                        axisTick: {
-                            show: false
-                        } // 隐藏Y轴刻度线
-                    },
-                    grid: { // 调整网格区域，让内容更紧凑
-                        left: '5%',
-                        right: '5%',
-                        top: '15%',
-                        bottom: '5%',
-                        containLabel: true // 包含坐标轴的刻度文字在 grid 区域内
-                    },
-                    series: [{
-                        name: title, // 用于 tooltip
-                        type: 'line',
-                        data: data,
-                        smooth: true, // 平滑曲线
-                        lineStyle: {
-                            color: getComputedStyle(document.documentElement).getPropertyValue(
-                                lineColorVar),
-                            width: 2 // 线条宽度
-                        },
-                        itemStyle: { // 数据点样式
-                            color: getComputedStyle(document.documentElement).getPropertyValue(
-                                lineColorVar)
-                        },
-                        showSymbol: true, // 显示数据点
-                        symbolSize: 6, // 数据点大小
-                        areaStyle: {
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
-                                offset: 0,
-                                color: areaColorRGBA // 渐变开始颜色
-                            }, {
-                                offset: 1,
-                                color: areaColorRGBA.replace(/,\s*0\.\d+\)/,
-                                    ', 0)') // 渐变结束颜色为透明
-                            }])
-                        }
-                    }]
-                };
-            }
-
-            // --- Rating Pro 图表 (ECharts 实现) ---
-            if (document.getElementById('pwRatingChart')) {
-                var pwRatingChart = echarts.init(document.getElementById('pwRatingChart'));
-                var pwRatingOption = createEChartsOption(
-                    'Rating', // 系列名称，用于 tooltip
-                    dates,
-                    historyPwRatings,
-                    '--chart-line-rating-pro',
-                    'rgba(216, 67, 21, 0.1)' // areaStyle 的起始颜色
-                );
-                // Chart.js 默认 X 轴标签不显示，ECharts 需要显式设置
-                pwRatingOption.xAxis.axisLabel.show = false;
-                pwRatingOption.grid.bottom = '5%'; // 底部间距更小
-
-                pwRatingChart.setOption(pwRatingOption);
-                window.addEventListener('resize', function () {
-                    pwRatingChart.resize();
-                });
-            }
-
-            // --- RWS 趋势图 (ECharts 实现) ---
-            if (document.getElementById('rwsChart')) {
-                var rwsChart = echarts.init(document.getElementById('rwsChart'));
-                var rwsOption = createEChartsOption(
-                    'RWS', // 系列名称，用于 tooltip
-                    dates,
-                    historyRws,
-                    '--chart-line-rws',
-                    'rgba(66, 66, 66, 0.1)' // areaStyle 的起始颜色
-                );
-                // Chart.js 默认 X 轴标签不显示，ECharts 需要显式设置
-                rwsOption.xAxis.axisLabel.show = false;
-                rwsOption.grid.bottom = '5%'; // 底部间距更小
-
-                rwsChart.setOption(rwsOption);
-                window.addEventListener('resize', function () {
-                    rwsChart.resize();
-                });
-            }
-
-            // --- 天梯分数图 (ECharts 实现) ---
-            if (document.getElementById('recentMatchScoreChart')) {
-                var recentMatchScoreChart = echarts.init(document.getElementById('recentMatchScoreChart'));
-                var recentMatchScoreOption = createEChartsOption(
-                    '分数', // 系列名称，用于 tooltip
-                    matchDates,
-                    matchScores,
-                    '--chart-line-elo',
-                    'rgba(0, 121, 107, 0.1)' // areaStyle 的起始颜色
-                );
-                // 天梯分数图的 X 轴标签需要显示，并且 Chart.js 默认是根据空间自动调整显示
-                recentMatchScoreOption.xAxis.axisLabel.show = true;
-                recentMatchScoreOption.xAxis.axisLabel.rotate = 45; // 旋转标签，防止重叠
-                recentMatchScoreOption.xAxis.axisLabel.interval = 0; // 强制显示所有标签（如果空间允许）
-                recentMatchScoreOption.grid.bottom = '10%'; // X轴有标签时底部留出更多空间
-
-                recentMatchScoreChart.setOption(recentMatchScoreOption);
-                window.addEventListener('resize', function () {
-                    recentMatchScoreChart.resize();
-                });
-            }
-        });
-    </script>
 </body>
 
 </html>

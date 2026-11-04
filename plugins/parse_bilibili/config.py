@@ -156,9 +156,6 @@ PLUGIN_TEMP_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_CACHE_DIR = PLUGIN_CACHE_DIR / "image"
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-SCREENSHOT_ELEMENT_OPUS = "#app > div.opus-detail > div.bili-opus-view"
-SCREENSHOT_ELEMENT_ARTICLE = ".article-holder"
-SCREENSHOT_TIMEOUT = 60
 
 DOWNLOAD_TIMEOUT = 120
 DOWNLOAD_MAX_RETRIES = 3

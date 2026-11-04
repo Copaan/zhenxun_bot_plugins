@@ -220,8 +220,9 @@ body {
   background-color: #fffbfc;
 }
 
-.two-border-border  {
-  float: left;
+.two-border-border {
+  display: flex;
+  flex-wrap: wrap;
 }
 
 
@@ -232,7 +233,6 @@ body {
   font-size: 13px;
   text-align: center;
   line-height: 3px;
-  float: left;
   margin: 8px 10px;
   line-height: 15px;
 }
