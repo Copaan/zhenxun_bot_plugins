@@ -85,7 +85,7 @@ __plugin_meta__ = PluginMetadata(
 """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="1.2.1",
+        version="1.2.2",
         superuser_help="""
 ### 跨群管理与清空
 

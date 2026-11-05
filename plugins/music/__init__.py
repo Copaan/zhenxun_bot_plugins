@@ -91,7 +91,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="1.0",
+        version="1.1",
         commands=[Command(command="点歌 [歌名]")],
         configs=[
             RegisterConfig(

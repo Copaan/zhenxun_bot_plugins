@@ -18,7 +18,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
-        version="0.2",
+        version="0.3",
         commands=[Command(command="微博热搜 ?[id]")],
     ).to_dict(),
 )

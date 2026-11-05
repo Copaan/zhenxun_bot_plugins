@@ -154,7 +154,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo",
-        version="1.6.0",
+        version="1.6.1",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[

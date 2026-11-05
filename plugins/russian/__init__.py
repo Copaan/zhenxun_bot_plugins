@@ -50,7 +50,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.2-89d294e",
+        version="0.4",
         menu_type="群内小游戏",
         commands=[
             Command(command="装弹 [子弹数] ?[金额] ?[at]"),
