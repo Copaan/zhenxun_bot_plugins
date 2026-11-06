@@ -1,17 +1,18 @@
-import hashlib
-import os
-import pickle
-import re
-import time
 from collections import Counter
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
+import hashlib
+import os
 from pathlib import Path
+import pickle
+import re
+import time
 from typing import Any
 
-import pytz
 from emoji import replace_emoji
 from nonebot.utils import run_sync
+import pytz
+
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.models.chat_history import ChatHistory
 from zhenxun.services.log import logger
@@ -129,23 +130,28 @@ class DataService:
 
     @staticmethod
     async def get_messages(
-        user_id: int | None, group_id: int, time_range: tuple[datetime, datetime]
+        user_id: int | None,
+        group_id: int,
+        time_range: tuple[datetime, datetime],
+        *,
+        platform_scope: str | None = None,
     ) -> MessageData | None:
         """获取消息数据"""
         start, stop = time_range
 
-        messages_list = await ChatHistory().get_message(
-            uid=str(user_id) if user_id else None,  # type: ignore
-            gid=str(group_id),
-            type_="group",
-            days=(start, stop),
-        )
+        messages_list = [
+            message
+            async for chunk in DataService.get_messages_stream(
+                user_id, group_id, time_range, platform_scope=platform_scope
+            )
+            for message in chunk
+        ]
 
         if not messages_list:
             return None
 
         return MessageData(
-            messages=[i.plain_text for i in messages_list],
+            messages=messages_list,
             user_id=user_id,
             group_id=group_id,
             start_time=start,
@@ -158,6 +164,8 @@ class DataService:
         group_id: int,
         time_range: tuple[datetime, datetime],
         chunk_size: int = 50000,
+        *,
+        platform_scope: str | None = None,
     ) -> AsyncGenerator[list[str], None]:
         """
         以流式（异步生成器）方式分块获取消息数据。
@@ -167,14 +175,19 @@ class DataService:
         offset = 0
 
         while True:
-            query = ChatHistory.filter(
+            query = ChatHistory.scoped_query(
+                platform_scope=platform_scope,
                 group_id=str(group_id),
-                create_time__range=(start, stop),
+                is_bot=False,
+                create_time__gte=start,
+                create_time__lte=stop,
             )
             if user_id:
                 query = query.filter(user_id=str(user_id))
 
-            messages_list = await query.offset(offset).limit(chunk_size).all()
+            messages_list = (
+                await query.order_by("id").offset(offset).limit(chunk_size).all()
+            )
 
             if not messages_list:
                 break
@@ -513,12 +526,15 @@ class WordCloudCache:
             date_type = "年度"
 
         logger.debug(f"使用日期类型生成缓存键: {date_type}")
-        return self._build_cache_key_from_date_type(
-            params.user_id,
+        date_key = self._build_cache_key_from_date_type(
+            params.user_id if params.my else None,
             params.group_id,
             date_type,
             params.start_time,
             params.end_time,
+        )
+        return self._create_hash_key(
+            f"scoped-v1:{params.platform_scope or ''}:{date_key}"
         )
 
     def _calculate_ttl(
@@ -671,7 +687,8 @@ class WordCloudCache:
 
         if is_yearly:
             logger.debug(
-                f"检测到年度请求(时间跨度): 时间跨度={time_span.days}天, 开始={start_time}, 结束={end_time}"
+                f"检测到年度请求(时间跨度): 时间跨度={time_span.days}天, "
+                f"开始={start_time}, 结束={end_time}"
             )
 
         return is_yearly

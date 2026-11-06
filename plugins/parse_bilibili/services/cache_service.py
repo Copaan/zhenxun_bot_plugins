@@ -482,18 +482,23 @@ class CacheService:
 
     @staticmethod
     def _get_context_key(session: EventSession) -> str:
-        """根据 EventSession 生成唯一的上下文 Key"""
+        """按平台、协议端、Bot 和会话生成解析缓存键。"""
         if session.id3:
-            return f"guild_{session.id3}_channel_{session.id2}"
+            context = ("guild", session.id3, session.id2)
         elif session.id2:
-            return f"group_{session.id2}"
+            context = ("group", session.id2)
         elif session.id1:
-            return f"private_{session.id1}"
+            context = ("private", session.id1)
         else:
             logger.warning(
-                "无法从 Session 中获取有效的上下文 ID，将使用全局缓存 Key", "B站解析"
+                "无法从 Session 中获取会话 ID，将使用当前 Bot 的缓存键", "B站解析"
             )
-            return "global_fallback_cache"
+            context = ("fallback",)
+        return json.dumps(
+            [session.platform, session.bot_type, session.bot_id, *context],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
 
     @classmethod
     async def _save_video_cache_index(cls):

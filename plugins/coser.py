@@ -25,7 +25,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.2",
+        version="0.2.1",
         commands=[Command(command="n（数字）连cos")],
         configs=[
             RegisterConfig(
@@ -135,10 +135,15 @@ async def _(
     message_list = [image_data_map[index] for index in sorted(image_data_map.keys())]
     is_forward = max_once_num2forward and len(image_data_map) >= max_once_num2forward
     try:
-        receipt = await MessageUtils.build_message(
-            message_list,  # pyright: ignore[reportArgumentType]
-            auto_forward_msg=session if is_forward else None,
-        ).send()
+        if is_forward:
+            message = MessageUtils.alc_forward_msg(
+                [MessageUtils.build_message(item) for item in message_list],
+                str(bot.self_id),
+                "coser",
+            )
+        else:
+            message = MessageUtils.build_message(message_list)
+        receipt = await message.send()
         message_id = receipt.msg_ids[0]["message_id"]
         if message_id and WithdrawManager.check(session, withdraw_time):
             WithdrawManager.append(

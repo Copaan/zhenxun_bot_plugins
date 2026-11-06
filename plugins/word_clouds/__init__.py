@@ -50,7 +50,7 @@ __plugin_meta__ = PluginMetadata(
 """.strip(),
     extra=PluginExtraData(
         author="yajiwa",
-        version="1.5.0",
+        version="1.5.1",
         plugin_type=PluginType.NORMAL,
         commands=[
             Command(command="今日词云"),

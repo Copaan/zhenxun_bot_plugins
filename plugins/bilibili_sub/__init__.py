@@ -85,7 +85,7 @@ __plugin_meta__ = PluginMetadata(
 """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="1.2.2",
+        version="1.2.3",
         superuser_help="""
 ### 跨群管理与清空
 
@@ -412,6 +412,7 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
     error_count = 0
 
     for target_id in sub_targets:
+        target_messages = list(msg_list)
         try:
             if target_id.startswith("group_"):
                 group_id = target_id.replace("group_", "")
@@ -458,7 +459,7 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
                             logger.debug(
                                 f"B站订阅推送将在群 {group_id} 中@全体成员: UID={sub.uid}"
                             )
-                            msg_list.insert(0, at_all_msg)
+                            target_messages.insert(0, at_all_msg)
                 except Exception as role_err:
                     logger.warning(
                         f"B站订阅推送获取机器人在群 {group_id} 中的角色失败: {type(role_err).__name__}, {role_err}"
@@ -475,13 +476,10 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
                     bot,
                     user_id=None,
                     group_id=group_id,
-                    message=MessageUtils.build_message(msg_list),
+                    message=MessageUtils.build_message(target_messages),
                 )
                 logger.debug(f"B站订阅推送成功发送到群 {group_id}: UID={sub.uid}")
                 success_count += 1
-
-                if at_all_msg:
-                    msg_list.remove(at_all_msg)
 
             elif target_id.startswith("private_"):
                 user_id = target_id.replace("private_", "")
@@ -490,7 +488,7 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
                     bot,
                     user_id=user_id,
                     group_id=None,
-                    message=MessageUtils.build_message(msg_list),
+                    message=MessageUtils.build_message(target_messages),
                 )
                 logger.debug(f"B站订阅推送成功发送到私聊用户: {user_id}, UID={sub.uid}")
                 success_count += 1
