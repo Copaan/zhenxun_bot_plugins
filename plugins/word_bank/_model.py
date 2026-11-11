@@ -1,14 +1,15 @@
+from datetime import datetime
 import random
 import re
 import time
-import uuid
-from datetime import datetime
 from typing import Any, ClassVar, NamedTuple
+from typing_extensions import Self
+import uuid
 
 from nonebot_plugin_alconna import At, AtAll, Image, Text, UniMessage
 from tortoise import Tortoise, fields
 from tortoise.expressions import Q
-from typing_extensions import Self
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.services.db_context import Model
@@ -366,23 +367,27 @@ class WordBank(Model):
         word_scope: ScopeType | None = None,
         word_type: WordType | None = None,
     ) -> Any:
-        """检测是否包含该问题并获取所有回答"""
+        """按词条范围查询，依次执行精确、字面子串和 Python 正则匹配。"""
 
         query = cls.filter(Q(status=True) | Q(status__isnull=True))
-        if group_id:
-            if word_scope:
-                query = query.filter(word_scope=word_scope.value)
-            else:
-                query = query.filter(
-                    Q(group_id=group_id) | Q(word_scope=ScopeType.GLOBAL.value)
-                )
+        if word_scope is not None:
+            query = query.filter(word_scope=word_scope.value)
+            if word_scope == ScopeType.GROUP:
+                if not group_id:
+                    return None
+                query = query.filter(group_id=group_id)
+        elif group_id:
+            query = query.filter(
+                Q(group_id=group_id, word_scope=ScopeType.GROUP.value)
+                | Q(word_scope=ScopeType.GLOBAL.value)
+            )
         else:
             query = query.filter(
                 Q(word_scope=ScopeType.PRIVATE.value)
                 | Q(word_scope=ScopeType.GLOBAL.value)
             )
-            if word_type:
-                query = query.filter(word_type=word_type.value)
+        if word_type is not None:
+            query = query.filter(word_type=word_type.value)
 
         # 完全匹配
         if data_list := await query.filter(
@@ -390,57 +395,21 @@ class WordBank(Model):
             Q(problem=problem),
         ).all():
             return data_list
-        db = Tortoise.get_connection("default")
-        db_class_name = BotConfig.get_sql_type()
-        # 模糊匹配：处理 POSITION 和 INSTR 的差异
-        if "postgres" in db_class_name:
-            sql = (
-                query.filter(word_type=WordType.FUZZY.value).sql()
-                + " AND POSITION(problem IN $1) > 0"
-            )
-            params = [problem]
-        elif "sqlite" in db_class_name:
-            sql = (
-                query.filter(word_type=WordType.FUZZY.value).sql()
-                + " AND INSTR(?, problem) > 0"
-            )
-            params = [problem]
-        elif "mysql" in db_class_name:
-            sql = (
-                query.filter(word_type=WordType.FUZZY.value).sql()
-                + " AND INSTR(%s, problem) > 0"
-            )
-            params = [problem]
-        else:
-            raise Exception(f"Unsupported database type: {db_class_name}")
-
-        data_list = await db.execute_query_dict(sql, params)
+        data_list = [
+            entry
+            for entry in await query.filter(word_type=WordType.FUZZY.value).all()
+            if entry.problem in problem
+        ]
         if data_list:
-            return [cls(**data) for data in data_list]
+            return data_list
 
-        # 正则匹配
-        if "postgres" in db_class_name:
-            sql = (
-                query.filter(word_type=WordType.REGEX.value, word_scope__not=999).sql()
-                + " AND $1 ~ problem"
-            )
-            params = [problem]
-        elif "sqlite" in db_class_name:
-            # SQLite 不支持 REGEXP，使用 LIKE 替代
-            sql = (
-                query.filter(word_type=WordType.REGEX.value, word_scope__not=999).sql()
-                + " AND problem LIKE ?"
-            )
-            params = [f"%{problem}%"]
-        elif "mysql" in db_class_name:
-            sql = (
-                query.filter(word_type=WordType.REGEX.value, word_scope__not=999).sql()
-                + " AND problem REGEXP ?"
-            )
-            params = [problem]
-
-        data_list = await db.execute_query_dict(sql, params)
-        return [cls(**data) for data in data_list] if data_list else None
+        for entry in await query.filter(word_type=WordType.REGEX.value).all():
+            try:
+                if re.search(entry.problem, problem):
+                    data_list.append(entry)
+            except re.error:
+                continue
+        return data_list or None
 
     @classmethod
     async def match_entry(

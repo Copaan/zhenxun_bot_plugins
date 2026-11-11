@@ -1,5 +1,6 @@
 import nonebot
 from nonebot.plugin import PluginMetadata
+
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
@@ -14,7 +15,7 @@ __plugin_meta__ = PluginMetadata(
     usage="",
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
-        version="0.7",
+        version="0.8.1",
         plugin_type=PluginType.PARENT,
         configs=[
             RegisterConfig(
